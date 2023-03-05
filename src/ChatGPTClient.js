@@ -15,7 +15,6 @@ export default class ChatGPTClient {
         cacheOptions = {},
     ) {
         this.apiKey = apiKey;
-
         this.options = options;
         const modelOptions = options.modelOptions || {};
         this.modelOptions = {
@@ -240,7 +239,6 @@ export default class ChatGPTClient {
         } else {
             payload = await this.buildPrompt(conversation.messages, userMessage.id);
         }
-
         let reply = '';
         let result = null;
         if (typeof opts.onProgress === 'function') {
@@ -317,13 +315,9 @@ export default class ChatGPTClient {
             if (!promptPrefix.endsWith(`${this.endToken}`)) {
                 promptPrefix = `${promptPrefix.trim()}${this.endToken}\n\n`;
             }
-            promptPrefix = `${this.startToken}Instructions:\n${promptPrefix}`;
+            promptPrefix = `${this.startToken}Instructions:\n${promptPrefix}$`;
         } else {
-            const currentDateString = new Date().toLocaleDateString(
-                'en-us',
-                { year: 'numeric', month: 'long', day: 'numeric' },
-            );
-            promptPrefix = `${this.startToken}Instructions:\nYou are ChatGPT, a large language model trained by OpenAI.\nCurrent date: ${currentDateString}${this.endToken}\n\n`
+            promptPrefix = `${this.startToken}Instructions:\nYou are ChatGPT, a large language model trained by OpenAI.\n${this.endToken}\n\n`
         }
 
         const promptSuffix = `${this.startToken}${this.chatGptLabel}:\n`; // Prompt ChatGPT to respond.
@@ -417,7 +411,6 @@ export default class ChatGPTClient {
         }
         // Use up to `this.maxContextTokens` tokens (prompt + response), but try to leave `this.maxTokens` tokens for the response.
         this.modelOptions.max_tokens = Math.min(this.maxContextTokens - numTokens, this.maxResponseTokens);
-
         if (isChatGptModel) {
             return [
                 instructionsPayload,
