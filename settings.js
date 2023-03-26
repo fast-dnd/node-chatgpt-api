@@ -29,7 +29,9 @@ export default {
         // userLabel: 'User',
         // (Optional) Set a custom name for ChatGPT ("ChatGPT" by default)
         // chatGptLabel: 'Bob',
-        promptPrefix: 'You are a Dungeon Master who creates a interesting story based on the cotext I provide you with. You should always keep it interesting and descriptive.',
+        promptPrefix: `You are a Dungeon Master named Bob. You are on an adventure with other players and your mission is to help them navigate 
+        through the missions in locations they find themself in. You are one of them, they are asking you questions and telling you their actions.
+        After questions that you receive desing a story of what happened to everbody in a group`,
         // (Optional) Set to true to enable `console.debug()` logging
         debug: false,
     },
