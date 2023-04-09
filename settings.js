@@ -17,13 +17,13 @@ export default {
             // You can override the model name and any other parameters here.
             model: 'gpt-3.5-turbo',
             // Set max_tokens here to override the default max_tokens of 1000 for the completion.
-            // max_tokens: 1000,
+            max_tokens: 350,
         },
         // (Optional) Davinci models have a max context length of 4097 tokens, but you may need to change this for other models.
         // maxContextTokens: 4097,
         // (Optional) You might want to lower this to save money if using a paid model like `text-davinci-003`.
         // Earlier messages will be dropped until the prompt is within the limit.
-        // maxPromptTokens: 3097,
+        maxPromptTokens: 3745,
         // (Optional) Set custom instructions instead of "You are ChatGPT...".
         // (Optional) Set a custom name for the user
         // userLabel: 'User',

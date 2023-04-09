@@ -1,0 +1,55 @@
+[{
+  "_id": {
+    "$oid": "6422062e3db445f385895675"
+  },
+  "name": "default",
+  "description": "default gameplay",
+  "sentences": {
+    "bob_introduction": "Hey Bob, introduce yourself to players that you are going to lead on this adventure. There are <<room.players.all.count>> number of players on this adventure and this are their descriptions. <<room.players.all.descriptions>>. First location that you are going to lead them through is called <<room.current_location.name>>.It's description is <<room.current_location.description>> and their mission is <<room.current_location.mission>>. Describe this to them and give some insight on how you would try to solve the mission.",
+    "round_intro": "Hey Bob, you and <<room.players.all.names>> are the only people on this adventure. Do not add other players to our team.",
+    "location_phase_discovery_start": "Players are still in location <<room.current_location.name>>",
+    "location_phase_freewill_start": "These are final decisions made by our team in location <<room.current_location.name>>. Explain how provided player actions affected the mission <<room.current_location.mission>> with some crazy story. Do follow the outcomes that I provide in player actions",
+    "player_action_explain_to_bob": "Player actions:",
+    "player_action": "Player <<room.player.name>> says: Hey Bob, <<room.queued_moves.action>>, <<room.queued_moves.outcome>>",
+    "no_input_action": "Player <<room.player.name>> says: Hey Bob, I will try to stay in place. outcome: really bad",
+    "instructions_after_actions_message": "I know you do not agree with all the actions but players will do what they decided and you cannot overrule that. Make up 6 sentence story of what happened to each one of them after their actions. Make the story as crazy as u can and make it weird and outlandish",
+    "death_of_one_player": "Player <<room.player.name>> has died after this action. Explain what happened to him",
+    "game_end_message": "All the players have died, declare game finish",
+    "game_win_message": "Players have won the game after this event. Make up a story of what happens next in their lives and how they continue forward. Declare that alive players have won",
+    "location_phase_freewill_finalization": "Tell players who are still alive that we are heading to new location <<room.next_location.name>>. Make up a reasonable story of 3 sentences with timeline how they end up there. Location description: <<room.next_location.name>>. Mission in new location is: <<room.next_location.mission>>. Bob you should describe this information to players and introduce them to the environment around them. Give some insight on how you would try to solve the mission and what is your idea on what players should do",
+    "location_phase_discovery_finalization": "These player actions are just preparation for their final decisions. Bob it's very important that you do not resolve the mission, just tell players that mission is still in progress and that their final decision needs to be clever! Tell players that they need to tell you their final decision for this mission",
+    "location_phase_any_instruction": "Bob what is your opinion about progress in the mission. Can we do it? Evaluate if it's going to succeed or not and tell that to players. Tell your thoughts on what they should do, but let them freely decide their move.",
+    "missionCompleted": "Tell players that mission <<room.current_location.mission>> has succesfully been completed",
+    "missionFailed": "Tell players that they did not complete the mission <<room.current_location.mission>>. Criticize them in a funny way Bob!",
+    "dice_bad": "outcome: bad (this means that something really bad or stupid happened to him and he loses some health)",
+    "dice_good": "outcome: normal (this means that this move was okay and player is going to be fine)",
+    "dice_awesome": "outcome: awesome (this means that something incredible happened to him while making this move"
+  },
+  "variables": {
+    "bob_introduction": "room.players.all.count#room.players.all.descriptions#room.current_location.name#room.current_location.description#room.current_location.mission",
+    "round_intro": "room.players.all.names",
+    "location_phase_discovery_start": "room.current_location.name",
+    "location_phase_freewill_start": "room.current_location.name#room.current_location.mission",
+    "player_action_explain_to_bob": "",
+    "player_action": "room.player.name#room.queued_moves.action#room.queued_moves.outcome",
+    "no_input_action": "room.player.name",
+    "instructions_after_actions_message": "",
+    "death_of_one_player": "room.player.name",
+    "game_end_message": "",
+    "game_win_message": "",
+    "location_phase_freewill_finalization": "nextLocationName#room.next_location.name#room.next_location.mission",
+    "location_phase_discovery_finalization": "",
+    "location_phase_any_instruction": "",
+    "missionCompleted": "room.current_location.mission",
+    "missionFailed": "room.current_location.mission",
+    "dice_bad": "",
+    "dice_good": "",
+    "dice_awesome": ""
+  },
+  "createdAt": {
+    "$date": "2023-03-27T21:10:06.666Z"
+  },
+  "updatedAt": {
+    "$date": "2023-03-27T21:10:06.666Z"
+  }
+}]
