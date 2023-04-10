@@ -230,20 +230,16 @@ export default class ChatGPTClient {
             message,
         };
         conversation.messages.push(userMessage);
-        console.log("ALL CONVERSATION MESSAGES, length:", conversation.messages.length, "messages:", conversation.messages);
-
         let payload;
         if (this.isChatGptModel) {
             // Doing it this way instead of having each message be a separate element in the array seems to be more reliable,
             // especially when it comes to keeping the AI in character. It also seems to improve coherency and context retention.
             payload = await this.buildPrompt(conversation.messages, userMessage.id, true);  
             if(conversation.messages.length > 2){ 
-                console.log("POP");
                 conversation.messages.pop();    
                 let summarized = await this.simpleSendMessageWithoutSession(`${userMessage.message}, summarize this text in maximum 200 tokens`);
                 summarized = summarized.response.trim();    
                 userMessage.message = summarized;
-                console.log("PUSH");
                 conversation.messages.push(userMessage);
             }
         } else {
@@ -251,7 +247,6 @@ export default class ChatGPTClient {
         }
         let reply = '';
         let result = null;
-        console.log("#########################################################")
         if (typeof opts.onProgress === 'function') {
             await this.getCompletion(
                 payload,
@@ -391,7 +386,6 @@ export default class ChatGPTClient {
         }
 
         const promptSuffix = `${this.startToken}${this.chatGptLabel}:\n`; // Prompt ChatGPT to respond.
-        console.log("promptSuffix", promptSuffix);
         const instructionsPayload = {
             role: 'system',
             name: 'instructions',
@@ -421,7 +415,6 @@ export default class ChatGPTClient {
         // Do this within a recursive async function so that it doesn't block the event loop for too long.
         const buildPromptBody = async () => {
             if (currentTokenCount < maxTokenCount && orderedMessages.length > 0) {
-                console.log("currentTokenCount < maxTokenCount && orderedMessages.length > 0");
                 console.log("CURRENT TOKEN SIZE: ", currentTokenCount);
                 const message = orderedMessages.pop();
                 
@@ -482,7 +475,6 @@ export default class ChatGPTClient {
                 instructionsPayload,
                 messagePayload,
             ]);
-            console.log("numTokens", numTokens); 
         } else {
             numTokens = this.getTokenCount(prompt);
         }
