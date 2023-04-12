@@ -230,14 +230,19 @@ export default class ChatGPTClient {
             role: 'User',
             message,
         };
-
         conversation.messages.push(userMessage);
-
         let payload;
         if (this.isChatGptModel) {
             // Doing it this way instead of having each message be a separate element in the array seems to be more reliable,
             // especially when it comes to keeping the AI in character. It also seems to improve coherency and context retention.
-            payload = await this.buildPrompt(conversation.messages, userMessage.id, true);
+            payload = await this.buildPrompt(conversation.messages, userMessage.id, true);  
+            if(conversation.messages.length > 2){ 
+                conversation.messages.pop();    
+                let summarized = await this.simpleSendMessageWithoutSession(`${userMessage.message}. summarize this text in maximum 200 tokens`);
+                summarized = summarized.response.trim();    
+                userMessage.message = summarized;
+                conversation.messages.push(userMessage);
+            }
         } else {
             payload = await this.buildPrompt(conversation.messages, userMessage.id);
         }
@@ -295,10 +300,69 @@ export default class ChatGPTClient {
             role: 'ChatGPT',
             message: reply,
         };
+        const cleanText = replyMessage.message.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+        replyMessage.message = cleanText;
         conversation.messages.push(replyMessage);
-
         await this.conversationsCache.set(conversationId, conversation);
+        return {
+            response: replyMessage.message,
+            conversationId,
+            messageId: replyMessage.id,
+            details: result || {},
+        };
+    }
 
+    async simpleSendMessageWithoutSession(
+        message,
+        opts = {},
+    ) {
+        const conversationId = crypto.randomUUID();
+        const parentMessageId = crypto.randomUUID();
+
+        let conversation = {
+            messages: [],
+            createdAt: Date.now(),
+        };
+        
+        const userMessage = {
+            id: crypto.randomUUID(),
+            parentMessageId,
+            role: 'User',
+            message,
+        };
+
+        conversation.messages.push(userMessage);
+
+        let payload;
+        if (this.isChatGptModel) {
+            // Doing it this way instead of having each message be a separate element in the array seems to be more reliable,
+            // especially when it comes to keeping the AI in character. It also seems to improve coherency and context retention.
+            payload = await this.buildPrompt(conversation.messages, userMessage.id, true);            
+        } else {
+            payload = await this.buildPrompt(conversation.messages, userMessage.id);
+        }
+        let reply = '';
+        let result = null;
+        result = await this.getCompletion(
+            payload,
+            null,
+            opts.abortController || new AbortController(),
+        );
+        if (this.isChatGptModel) {
+            reply = result.choices[0].message.content;
+        } else {
+            reply = result.choices[0].text.replace(this.endToken, '');
+        }
+
+        reply = reply.trim();
+
+        const replyMessage = {
+            id: crypto.randomUUID(),
+            parentMessageId: userMessage.id,
+            role: 'ChatGPT',
+            message: reply,
+        };
+        conversation.messages.push(replyMessage);
         return {
             response: replyMessage.message,
             conversationId,
@@ -323,7 +387,6 @@ export default class ChatGPTClient {
         }
 
         const promptSuffix = `${this.startToken}${this.chatGptLabel}:\n`; // Prompt ChatGPT to respond.
-
         const instructionsPayload = {
             role: 'system',
             name: 'instructions',
@@ -342,17 +405,20 @@ export default class ChatGPTClient {
                 instructionsPayload,
                 messagePayload,
             ]);
+            console.log("currentTokenCount:", currentTokenCount);
         } else {
             currentTokenCount = this.getTokenCount(`${promptPrefix}${promptSuffix}`);
         }
         let promptBody = '';
         const maxTokenCount = this.maxPromptTokens;
-
+        console.log("MAX TOKEN SIZE: ", maxTokenCount);
         // Iterate backwards through the messages, adding them to the prompt until we reach the max token count.
         // Do this within a recursive async function so that it doesn't block the event loop for too long.
         const buildPromptBody = async () => {
             if (currentTokenCount < maxTokenCount && orderedMessages.length > 0) {
+                console.log("CURRENT TOKEN SIZE: ", currentTokenCount);
                 const message = orderedMessages.pop();
+                
                 const roleLabel = message.role === 'User' ? this.userLabel : this.chatGptLabel;
                 const messageString = `${this.startToken}${roleLabel}:\n${message.message}${this.endToken}\n`;
                 let newPromptBody;
@@ -378,10 +444,12 @@ export default class ChatGPTClient {
                             content: newPromptBody,
                         },
                     ]);
+                    console.log("CURRENT TOKEN SIZE + NEW MESSAGE: ", newTokenCount);
                 } else {
                     newTokenCount = this.getTokenCount(`${newPromptBody}${promptSuffix}`);
                 }
                 if (newTokenCount > maxTokenCount) {
+                    console.log("newTokenCount > maxTokenCount: ", newTokenCount);
                     if (promptBody) {
                         // This message would put us over the token limit, so don't add it.
                         return false;
@@ -398,8 +466,8 @@ export default class ChatGPTClient {
         };
 
         await buildPromptBody();
-
         const prompt = `${promptBody}${promptSuffix}`;
+        console.log("prompt", prompt);
 
         let numTokens;
         if (isChatGptModel) {
