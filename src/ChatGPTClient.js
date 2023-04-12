@@ -237,7 +237,7 @@ export default class ChatGPTClient {
             payload = await this.buildPrompt(conversation.messages, userMessage.id, true);  
             if(conversation.messages.length > 2){ 
                 conversation.messages.pop();    
-                let summarized = await this.simpleSendMessageWithoutSession(`${userMessage.message}, summarize this text in maximum 200 tokens`);
+                let summarized = await this.simpleSendMessageWithoutSession(`${userMessage.message}. summarize this text in maximum 200 tokens`);
                 summarized = summarized.response.trim();    
                 userMessage.message = summarized;
                 conversation.messages.push(userMessage);

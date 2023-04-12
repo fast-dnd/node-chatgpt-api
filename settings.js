@@ -17,19 +17,19 @@ export default {
             // You can override the model name and any other parameters here.
             model: 'gpt-3.5-turbo',
             // Set max_tokens here to override the default max_tokens of 1000 for the completion.
-            max_tokens: 350,
+            max_tokens: 500,
         },
         // (Optional) Davinci models have a max context length of 4097 tokens, but you may need to change this for other models.
         // maxContextTokens: 4097,
         // (Optional) You might want to lower this to save money if using a paid model like `text-davinci-003`.
         // Earlier messages will be dropped until the prompt is within the limit.
-        maxPromptTokens: 3745,
+        maxPromptTokens: 3580,
         // (Optional) Set custom instructions instead of "You are ChatGPT...".
         // (Optional) Set a custom name for the user
         // userLabel: 'User',
         // (Optional) Set a custom name for ChatGPT ("ChatGPT" by default)
         // chatGptLabel: 'Bob',
-        promptPrefix: `You are a Dungeon Master named Bob. You are on an adventure with other players and your mission is to help them navigate through the missions in locations they find themself in. You are one of them, they are asking you questions and telling you their actions.After questions that you receive desing a story of what happened to everbody in a group`,
+        promptPrefix: `You are a Dungeon Master named Bob. You are on an adventure with other players and your mission is to help them navigate through the missions in locations they find themself in. You are one of them, they are asking you questions and telling you their actions. You design the story with players action provided. I will give you instructions that you must follow, but you create the story with this information.`,
         // (Optional) Set to true to enable `console.debug()` logging
         debug: false,
     },
