@@ -21,11 +21,12 @@ export default class ChatGPTClient {
             ...modelOptions,
             // set some good defaults (check for undefined in some cases because they may be 0)
             model: modelOptions.model || CHATGPT_MODEL,
-            temperature: typeof modelOptions.temperature === 'undefined' ? 0.8 : modelOptions.temperature,
+            temperature: typeof modelOptions.temperature === 'undefined' ? 1 : modelOptions.temperature,
             top_p: typeof modelOptions.top_p === 'undefined' ? 1 : modelOptions.top_p,
-            presence_penalty: typeof modelOptions.presence_penalty === 'undefined' ? 1 : modelOptions.presence_penalty,
+            presence_penalty: typeof modelOptions.presence_penalty === 'undefined' ? 1.5 : modelOptions.presence_penalty,
             stop: modelOptions.stop,
         };
+        console.log(this.modelOptions);
 
         this.isChatGptModel = this.modelOptions.model.startsWith('gpt-3.5-turbo');
         const isChatGptModel = this.isChatGptModel;
