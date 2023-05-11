@@ -237,13 +237,13 @@ export default class ChatGPTClient {
             // Doing it this way instead of having each message be a separate element in the array seems to be more reliable,
             // especially when it comes to keeping the AI in character. It also seems to improve coherency and context retention.
             payload = await this.buildPrompt(conversation.messages, userMessage.id, true);  
-            if(conversation.messages.length > 2){ 
-                conversation.messages.pop();    
-                let summarized = await this.simpleSendMessageWithoutSession(`${userMessage.message}. summarize this text in maximum 200 tokens`);
-                summarized = summarized.response.trim();    
-                userMessage.message = summarized;
-                conversation.messages.push(userMessage);
-            }
+            // if(conversation.messages.length > 2){ 
+            //     conversation.messages.pop();    
+            //     let summarized = await this.simpleSendMessageWithoutSession(`${userMessage.message}. summarize this text in maximum 200 tokens`);
+            //     summarized = summarized.response.trim();    
+            //     userMessage.message = summarized;
+            //     conversation.messages.push(userMessage);
+            // }
         } else {
             payload = await this.buildPrompt(conversation.messages, userMessage.id);
         }
@@ -468,7 +468,7 @@ export default class ChatGPTClient {
 
         await buildPromptBody();
         const prompt = `${promptBody}${promptSuffix}`;
-        console.log("prompt", prompt);
+        console.log("prompt", prompt.length);
 
         let numTokens;
         if (isChatGptModel) {
