@@ -123,7 +123,6 @@ export default class ChatGPTClient {
                 headersTimeout: 0,
             }),
         };
-        console.log(JSON.stringify(modelOptions));
         if (modelOptions.stream) {
             return new Promise(async (resolve, reject) => {
                 try {
@@ -176,6 +175,7 @@ export default class ChatGPTClient {
                             }
                             if (message.data === '[DONE]') {
                                 onProgress('[DONE]');
+                                console.log("Received final [DONE] chunk for prompt.")
                                 abortController.abort();
                                 resolve();
                                 done = true;
@@ -216,7 +216,7 @@ export default class ChatGPTClient {
     ) {
         const conversationId = opts.conversationId || crypto.randomUUID();
         const parentMessageId = opts.parentMessageId || crypto.randomUUID();
-
+        console.log(`Send message. ConversationId: ${conversationId}, ParentId: ${parentMessageId}`);
         let conversation = await this.conversationsCache.get(conversationId);
         if (!conversation) {
             conversation = {
@@ -236,6 +236,7 @@ export default class ChatGPTClient {
         if (this.isChatGptModel) {
             // Doing it this way instead of having each message be a separate element in the array seems to be more reliable,
             // especially when it comes to keeping the AI in character. It also seems to improve coherency and context retention.
+            console.log(`Building prompt. ConversationId: ${conversationId}, ParentId: ${parentMessageId}`);
             payload = await this.buildPrompt(conversation.messages, userMessage.id, true);  
             // if(conversation.messages.length > 2){ 
             //     conversation.messages.pop();    
@@ -247,6 +248,7 @@ export default class ChatGPTClient {
         } else {
             payload = await this.buildPrompt(conversation.messages, userMessage.id);
         }
+        console.log(`Prompt built. ConversationId: ${conversationId}, ParentId: ${parentMessageId}`);
         let reply = '';
         let result = null;
         if (typeof opts.onProgress === 'function') {
@@ -373,6 +375,7 @@ export default class ChatGPTClient {
     }
 
     async buildPrompt(messages, parentMessageId, isChatGptModel = false) {
+        console.log("parent message id:", parentMessageId);
         const orderedMessages = this.constructor.getMessagesForConversation(messages, parentMessageId);
 
         let promptPrefix;
@@ -406,18 +409,17 @@ export default class ChatGPTClient {
                 instructionsPayload,
                 messagePayload,
             ]);
-            console.log("currentTokenCount:", currentTokenCount);
+            console.log(`current token count for parentId ${parentMessageId}:, ${currentTokenCount}`);
         } else {
             currentTokenCount = this.getTokenCount(`${promptPrefix}${promptSuffix}`);
         }
         let promptBody = '';
         const maxTokenCount = this.maxPromptTokens;
-        console.log("MAX TOKEN SIZE: ", maxTokenCount);
         // Iterate backwards through the messages, adding them to the prompt until we reach the max token count.
         // Do this within a recursive async function so that it doesn't block the event loop for too long.
         const buildPromptBody = async () => {
             if (currentTokenCount < maxTokenCount && orderedMessages.length > 0) {
-                console.log("CURRENT TOKEN SIZE: ", currentTokenCount);
+                console.log(`Adding tokens in iterations. Current token count: ${currentTokenCount}`);
                 const message = orderedMessages.pop();
                 
                 const roleLabel = message.role === 'User' ? this.userLabel : this.chatGptLabel;
@@ -445,12 +447,11 @@ export default class ChatGPTClient {
                             content: newPromptBody,
                         },
                     ]);
-                    console.log("CURRENT TOKEN SIZE + NEW MESSAGE: ", newTokenCount);
                 } else {
                     newTokenCount = this.getTokenCount(`${newPromptBody}${promptSuffix}`);
                 }
                 if (newTokenCount > maxTokenCount) {
-                    console.log("newTokenCount > maxTokenCount: ", newTokenCount);
+                    console.log("!!! newTokenCount > maxTokenCount: ", newTokenCount);
                     if (promptBody) {
                         // This message would put us over the token limit, so don't add it.
                         return false;
@@ -468,7 +469,6 @@ export default class ChatGPTClient {
 
         await buildPromptBody();
         const prompt = `${promptBody}${promptSuffix}`;
-        console.log("prompt", prompt.length);
 
         let numTokens;
         if (isChatGptModel) {
