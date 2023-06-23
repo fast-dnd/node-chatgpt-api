@@ -417,12 +417,20 @@ export default class ChatGPTClient {
         const maxTokenCount = this.maxPromptTokens;
         // Iterate backwards through the messages, adding them to the prompt until we reach the max token count.
         // Do this within a recursive async function so that it doesn't block the event loop for too long.
-        const buildPromptBody = async () => {
+        const lastUserIteration = orderedMessages.length -1;
+        const buildPromptBody = async (iteration) => {
             if (currentTokenCount < maxTokenCount && orderedMessages.length > 0) {
                 console.log(`Adding tokens in iterations. Current token count: ${currentTokenCount}`);
                 const message = orderedMessages.pop();
                 
                 const roleLabel = message.role === 'User' ? this.userLabel : this.chatGptLabel;
+                /* Pop logic explanation: 
+                [iteration < lastUserIteration -> I want first message on bottom bobInto to be there]
+                [iteration > 0 -> I want last User message to be there ]
+                */
+                if(roleLabel === 'User' && iteration > 0 && iteration < lastUserIteration) {
+                    message.message = "Some rules/instructions on how DM should continue the story...";
+                }
                 const messageString = `${this.startToken}${roleLabel}:\n${message.message}${this.endToken}\n`;
                 let newPromptBody;
                 if (promptBody || isChatGptModel) {
@@ -462,12 +470,12 @@ export default class ChatGPTClient {
                 promptBody = newPromptBody;
                 currentTokenCount = newTokenCount;
                 await new Promise((resolve) => setTimeout(resolve, 0));
-                return buildPromptBody();
+                return buildPromptBody(iteration + 1);
             }
             return true;
         };
 
-        await buildPromptBody();
+        await buildPromptBody(0);
         const prompt = `${promptBody}${promptSuffix}`;
 
         let numTokens;
@@ -477,6 +485,8 @@ export default class ChatGPTClient {
                 instructionsPayload,
                 messagePayload,
             ]);
+            // console.log(`Final content: ${prompt}`);
+            console.log(`FINAL number of tokens is: ${numTokens}`)
         } else {
             numTokens = this.getTokenCount(prompt);
         }
