@@ -85,8 +85,9 @@ export default class ChatGPTClient {
             this.completionsUrl = 'https://api.openai.com/v1/completions';
         }
 
-        cacheOptions.namespace = cacheOptions.namespace || 'chatgpt';
+        cacheOptions.namespace = cacheOptions.namespace || 'chatgpt'; // other options in settings.json
         this.conversationsCache = new Keyv(cacheOptions);
+        console.log("this.conversationsCache:", this.conversationsCache);
     }
 
     async getCompletion(input, onProgress, abortController = null) {
