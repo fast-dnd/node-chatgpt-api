@@ -5,7 +5,7 @@ export default {
     cacheOptions: {
         uri : process.env.REDIS_URL || "redis://localhost:6379",
         adapter : "redis",
-        ttl : 1200000 // 20 minutes in ms
+        ttl : 1800000 // 30 minutes in ms
     },
     // If set, `ChatGPTClient` will use `keyv-file` to store conversations to this JSON file instead of in memory.
     // However, `cacheOptions.store` will override this if set
