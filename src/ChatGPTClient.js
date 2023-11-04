@@ -21,7 +21,7 @@ export default class ChatGPTClient {
             ...modelOptions,
             // set some good defaults (check for undefined in some cases because they may be 0)
             model: modelOptions.model || CHATGPT_MODEL,
-            temperature: 1.7,
+            temperature: 1.5,
             top_p: 0.4,
             presence_penalty: 0.8,
             stop: modelOptions.stop,
