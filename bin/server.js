@@ -84,13 +84,14 @@ server.post('/conversation', async (request, reply) => {
     });
 
     let onProgress;
+    let messageCounter = 1; // Initialize the message counter
     if (body.stream === true) {
         onProgress = (token) => {
             if (settings.apiOptions?.debug) {
                 console.debug(token);
             }
             if (token !== '[DONE]') {
-                reply.sse({ id: '', data: JSON.stringify(token) });
+                reply.sse({ id: messageCounter++, data: JSON.stringify(token) });
             }
         };
     } else {
