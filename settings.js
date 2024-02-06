@@ -21,7 +21,7 @@ export default {
             // You can override the model name and any other parameters here.
             model: 'gpt-3.5-turbo-16k',
             // Set max_tokens here to override the default max_tokens of 1000 for the completion.
-            max_tokens: 380,
+            max_tokens: 540,
         },
         // (Optional) Davinci models have a max context length of 4097 tokens, but you may need to change this for other models.
         maxContextTokens: 16000,
