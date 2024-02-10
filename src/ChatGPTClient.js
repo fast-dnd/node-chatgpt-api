@@ -1,12 +1,13 @@
 import './fetch-polyfill.js';
 import crypto from 'crypto';
 import Keyv from 'keyv';
-import { encoding_for_model, get_encoding } from '@dqbd/tiktoken';
+import { encoding_for_model as encodingForModel, get_encoding as getEncoding } from '@dqbd/tiktoken';
 import { fetchEventSource } from '@waylaidwanderer/fetch-event-source';
-import { Agent } from 'undici';
+import { Agent, ProxyAgent } from 'undici';
 
-const CHATGPT_MODEL = 'text-chat-davinci-002-sh-alpha-aoruigiofdj83';
-const CHATGPT_TOKENIZER = get_encoding('cl100k_base');
+const CHATGPT_MODEL = 'gpt-3.5-turbo';
+
+const tokenizersCache = {};
 
 export default class ChatGPTClient {
     constructor(
@@ -15,8 +16,35 @@ export default class ChatGPTClient {
         cacheOptions = {},
     ) {
         this.apiKey = apiKey;
-        this.options = options;
-        const modelOptions = options.modelOptions || {};
+
+        cacheOptions.namespace = cacheOptions.namespace || 'chatgpt';
+        this.conversationsCache = new Keyv(cacheOptions);
+
+        this.setOptions(options);
+    }
+
+    setOptions(options) {
+        if (this.options && !this.options.replaceOptions) {
+            // nested options aren't spread properly, so we need to do this manually
+            this.options.modelOptions = {
+                ...this.options.modelOptions,
+                ...options.modelOptions,
+            };
+            delete options.modelOptions;
+            // now we can merge options
+            this.options = {
+                ...this.options,
+                ...options,
+            };
+        } else {
+            this.options = options;
+        }
+
+        if (this.options.openaiApiKey) {
+            this.apiKey = this.options.openaiApiKey;
+        }
+
+        const modelOptions = this.options.modelOptions || {};
         this.modelOptions = {
             ...modelOptions,
             // set some good defaults (check for undefined in some cases because they may be 0)
@@ -28,10 +56,10 @@ export default class ChatGPTClient {
         };
         console.log(this.modelOptions);
 
-        this.isChatGptModel = this.modelOptions.model.startsWith('gpt-3.5-turbo');
-        const isChatGptModel = this.isChatGptModel;
+        this.isChatGptModel = this.modelOptions.model.startsWith('gpt-');
+        const { isChatGptModel } = this;
         this.isUnofficialChatGptModel = this.modelOptions.model.startsWith('text-chat') || this.modelOptions.model.startsWith('text-davinci-002-render');
-        const isUnofficialChatGptModel = this.isUnofficialChatGptModel;
+        const { isUnofficialChatGptModel } = this;
 
         // Davinci models have a max context length of 4097 tokens.
         this.maxContextTokens = this.options.maxContextTokens || (isChatGptModel ? 4095 : 4097);
@@ -51,20 +79,28 @@ export default class ChatGPTClient {
         if (isChatGptModel) {
             // Use these faux tokens to help the AI understand the context since we are building the chat log ourselves.
             // Trying to use "<|im_start|>" causes the AI to still generate "<" or "<|" at the end sometimes for some reason,
-            // without tripping the stop sequences, so I'm using "##im_start##" instead.
+            // without tripping the stop sequences, so I'm using "||>" instead.
             this.startToken = '||>';
             this.endToken = '';
+            this.gptEncoder = this.constructor.getTokenizer('cl100k_base');
         } else if (isUnofficialChatGptModel) {
             this.startToken = '<|im_start|>';
             this.endToken = '<|im_end|>';
-            this.gptEncoder = encoding_for_model('text-davinci-003', {
+            this.gptEncoder = this.constructor.getTokenizer('text-davinci-003', true, {
                 '<|im_start|>': 100264,
                 '<|im_end|>': 100265,
             });
         } else {
-            this.startToken = '<|endoftext|>';
-            this.endToken = this.startToken;
-            this.gptEncoder = encoding_for_model('text-davinci-003');
+            // Previously I was trying to use "<|endoftext|>" but there seems to be some bug with OpenAI's token counting
+            // system that causes only the first "<|endoftext|>" to be counted as 1 token, and the rest are not treated
+            // as a single token. So we're using this instead.
+            this.startToken = '||>';
+            this.endToken = '';
+            try {
+                this.gptEncoder = this.constructor.getTokenizer(this.modelOptions.model, true);
+            } catch {
+                this.gptEncoder = this.constructor.getTokenizer('text-davinci-003', true);
+            }
         }
 
         if (!this.modelOptions.stop) {
@@ -73,6 +109,7 @@ export default class ChatGPTClient {
                 stopTokens.push(this.endToken);
             }
             stopTokens.push(`\n${this.userLabel}:`);
+            stopTokens.push('<|diff_marker|>');
             // I chose not to do one for `chatGptLabel` because I've never seen it happen
             this.modelOptions.stop = stopTokens;
         }
@@ -85,9 +122,21 @@ export default class ChatGPTClient {
             this.completionsUrl = 'https://api.openai.com/v1/completions';
         }
 
-        cacheOptions.namespace = cacheOptions.namespace || 'chatgpt'; // other options in settings.json
-        this.conversationsCache = new Keyv(cacheOptions);
-        console.log("this.conversationsCache:", this.conversationsCache);
+        return this;
+    }
+
+    static getTokenizer(encoding, isModelName = false, extendSpecialTokens = {}) {
+        if (tokenizersCache[encoding]) {
+            return tokenizersCache[encoding];
+        }
+        let tokenizer;
+        if (isModelName) {
+            tokenizer = encodingForModel(encoding, extendSpecialTokens);
+        } else {
+            tokenizer = getEncoding(encoding, extendSpecialTokens);
+        }
+        tokenizersCache[encoding] = tokenizer;
+        return tokenizer;
     }
 
     async getCompletion(input, onProgress, abortController = null) {
@@ -104,7 +153,7 @@ export default class ChatGPTClient {
         } else {
             modelOptions.prompt = input;
         }
-        const debug = this.options.debug;
+        const { debug } = this.options;
         const url = this.completionsUrl;
         if (debug) {
             console.debug();
@@ -116,7 +165,6 @@ export default class ChatGPTClient {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${this.apiKey}`,
             },
             body: JSON.stringify(modelOptions),
             dispatcher: new Agent({
@@ -124,7 +172,23 @@ export default class ChatGPTClient {
                 headersTimeout: 0,
             }),
         };
+
+        if (this.apiKey && this.options.azure && this.options.reverseProxyUrl) {
+            opts.headers['api-key'] = this.apiKey;
+        } else if (this.apiKey) {
+            opts.headers.Authorization = `Bearer ${this.apiKey}`;
+        }
+
+        if (this.options.headers) {
+            opts.headers = { ...opts.headers, ...this.options.headers };
+        }
+
+        if (this.options.proxy) {
+            opts.dispatcher = new ProxyAgent(this.options.proxy);
+        }
+
         if (modelOptions.stream) {
+            // eslint-disable-next-line no-async-promise-executor
             return new Promise(async (resolve, reject) => {
                 try {
                     let done = false;
@@ -211,20 +275,60 @@ export default class ChatGPTClient {
         return response.json();
     }
 
+    async generateTitle(userMessage, botMessage) {
+        const instructionsPayload = {
+            role: 'system',
+            content: `Write an extremely concise subtitle for this conversation with no more than a few words. All words should be capitalized. Exclude punctuation.
+
+||>Message:
+${userMessage.message}
+||>Response:
+${botMessage.message}
+
+||>Title:`,
+        };
+
+        const titleGenClientOptions = JSON.parse(JSON.stringify(this.options));
+        titleGenClientOptions.modelOptions = {
+            model: 'gpt-3.5-turbo',
+            temperature: 0,
+            presence_penalty: 0,
+            frequency_penalty: 0,
+        };
+        const titleGenClient = new ChatGPTClient(this.apiKey, titleGenClientOptions);
+        const result = await titleGenClient.getCompletion([instructionsPayload], null);
+        // remove any non-alphanumeric characters, replace multiple spaces with 1, and then trim
+        return result.choices[0].message.content
+            .replace(/[^a-zA-Z0-9' ]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
     async sendMessage(
         message,
         opts = {},
     ) {
+        if (opts.clientOptions && typeof opts.clientOptions === 'object') {
+            this.setOptions(opts.clientOptions);
+        }
+
         const conversationId = opts.conversationId || crypto.randomUUID();
         const parentMessageId = opts.parentMessageId || crypto.randomUUID();
         console.log(`Send message. ConversationId: ${conversationId}, ParentId: ${parentMessageId}`);
-        let conversation = await this.conversationsCache.get(conversationId);
+        let conversation = typeof opts.conversation === 'object'
+            ? opts.conversation
+            : await this.conversationsCache.get(conversationId);
+
+        let isNewConversation = false;
         if (!conversation) {
             conversation = {
                 messages: [],
                 createdAt: Date.now(),
             };
+            isNewConversation = true;
         }
+
+        const shouldGenerateTitle = opts.shouldGenerateTitle && isNewConversation;
 
         const userMessage = {
             id: crypto.randomUUID(),
@@ -233,21 +337,21 @@ export default class ChatGPTClient {
             message,
         };
         conversation.messages.push(userMessage);
-        let payload;
-        if (this.isChatGptModel) {
-            // Doing it this way instead of having each message be a separate element in the array seems to be more reliable,
-            // especially when it comes to keeping the AI in character. It also seems to improve coherency and context retention.
-            console.log(`Building prompt. ConversationId: ${conversationId}, ParentId: ${parentMessageId}`);
-            payload = await this.buildPrompt(conversation.messages, userMessage.id, true);  
-            // if(conversation.messages.length > 2){ 
-            //     conversation.messages.pop();    
-            //     let summarized = await this.simpleSendMessageWithoutSession(`${userMessage.message}. summarize this text in maximum 200 tokens`);
-            //     summarized = summarized.response.trim();    
-            //     userMessage.message = summarized;
-            //     conversation.messages.push(userMessage);
-            // }
-        } else {
-            payload = await this.buildPrompt(conversation.messages, userMessage.id);
+
+        console.log(`Building prompt. ConversationId: ${conversationId}, ParentId: ${parentMessageId}`);
+        // Doing it this way instead of having each message be a separate element in the array seems to be more reliable,
+        // especially when it comes to keeping the AI in character. It also seems to improve coherency and context retention.
+        const { prompt: payload, context } = await this.buildPrompt(
+            conversation.messages,
+            userMessage.id,
+            {
+                isChatGptModel: this.isChatGptModel,
+                promptPrefix: opts.promptPrefix,
+            },
+        );
+
+        if (this.options.keepNecessaryMessagesOnly) {
+            conversation.messages = context;
         }
         console.log(`Prompt built. ConversationId: ${conversationId}, ParentId: ${parentMessageId}`);
         let reply = '';
@@ -255,11 +359,11 @@ export default class ChatGPTClient {
         if (typeof opts.onProgress === 'function') {
             await this.getCompletion(
                 payload,
-                (message) => {
-                    if (message === '[DONE]') {
+                (progressMessage) => {
+                    if (progressMessage === '[DONE]') {
                         return;
                     }
-                    const token = this.isChatGptModel ? message.choices[0].delta.content : message.choices[0].text;
+                    const token = this.isChatGptModel ? progressMessage.choices[0]?.delta.content : progressMessage.choices[0]?.text;
                     // first event's delta content is always undefined
                     if (!token) {
                         return;
@@ -367,21 +471,33 @@ export default class ChatGPTClient {
             message: reply,
         };
         conversation.messages.push(replyMessage);
-        return {
+        const returnData = {
             response: replyMessage.message,
             conversationId,
+            parentMessageId: replyMessage.parentMessageId,
             messageId: replyMessage.id,
             details: result || {},
         };
+
+        if (shouldGenerateTitle) {
+            conversation.title = await this.generateTitle(userMessage, replyMessage);
+            returnData.title = conversation.title;
+        }
+
+        await this.conversationsCache.set(conversationId, conversation);
+
+        if (this.options.returnConversation) {
+            returnData.conversation = conversation;
+        }
+
+        return returnData;
     }
 
-    async buildPrompt(messages, parentMessageId, isChatGptModel = false) {
-        console.log("parent message id:", parentMessageId);
+    async buildPrompt(messages, parentMessageId, { isChatGptModel = false, promptPrefix = null }) {
         const orderedMessages = this.constructor.getMessagesForConversation(messages, parentMessageId);
 
-        let promptPrefix;
-        if (this.options.promptPrefix) {
-            promptPrefix = this.options.promptPrefix.trim();
+        promptPrefix = (promptPrefix || this.options.promptPrefix || '').trim();
+        if (promptPrefix) {
             // If the prompt prefix doesn't end with the end token, add it.
             if (!promptPrefix.endsWith(`${this.endToken}`)) {
                 promptPrefix = `${promptPrefix.trim()}${this.endToken}\n\n`;
@@ -400,22 +516,21 @@ export default class ChatGPTClient {
 
         const messagePayload = {
             role: 'system',
-            name: 'user',
             content: promptSuffix,
         };
 
         let currentTokenCount;
         if (isChatGptModel) {
-            currentTokenCount = this.constructor.getTokenCountForMessages([
-                instructionsPayload,
-                messagePayload,
-            ]);
+            currentTokenCount = this.getTokenCountForMessage(instructionsPayload) + this.getTokenCountForMessage(messagePayload);
             console.log(`current token count for parentId ${parentMessageId}:, ${currentTokenCount}`);
         } else {
             currentTokenCount = this.getTokenCount(`${promptPrefix}${promptSuffix}`);
         }
         let promptBody = '';
         const maxTokenCount = this.maxPromptTokens;
+
+        const context = [];
+
         // Iterate backwards through the messages, adding them to the prompt until we reach the max token count.
         // Do this within a recursive async function so that it doesn't block the event loop for too long.
         const lastUserIteration = orderedMessages.length -1;
@@ -444,21 +559,10 @@ export default class ChatGPTClient {
                     newPromptBody = `${promptPrefix}${messageString}${promptBody}`;
                 }
 
-                // The reason I don't simply get the token count of the messageString and add it to currentTokenCount is because
-                // joined words may combine into a single token. Actually, that isn't really applicable here, but I can't
-                // resist doing it the "proper" way.
-                let newTokenCount;
-                if (isChatGptModel) {
-                    newTokenCount = this.constructor.getTokenCountForMessages([
-                        instructionsPayload,
-                        {
-                            ...messagePayload,
-                            content: newPromptBody,
-                        },
-                    ]);
-                } else {
-                    newTokenCount = this.getTokenCount(`${newPromptBody}${promptSuffix}`);
-                }
+                context.unshift(message);
+
+                const tokenCountForMessage = this.getTokenCount(messageString);
+                const newTokenCount = currentTokenCount + tokenCountForMessage;
                 if (newTokenCount > maxTokenCount) {
                     console.log("!!! newTokenCount > maxTokenCount: ", newTokenCount);
                     if (promptBody) {
@@ -470,36 +574,28 @@ export default class ChatGPTClient {
                 }
                 promptBody = newPromptBody;
                 currentTokenCount = newTokenCount;
-                await new Promise((resolve) => setTimeout(resolve, 0));
-                return buildPromptBody(iteration + 1);
+                // wait for next tick to avoid blocking the event loop
+                await new Promise(resolve => setImmediate(resolve));
+                return buildPromptBody();
             }
             return true;
         };
 
         await buildPromptBody(0);
         const prompt = `${promptBody}${promptSuffix}`;
-
-        let numTokens;
         if (isChatGptModel) {
             messagePayload.content = prompt;
-            numTokens = this.constructor.getTokenCountForMessages([
-                instructionsPayload,
-                messagePayload,
-            ]);
-            // console.log(`Final content: ${prompt}`);
-            console.log(`FINAL number of tokens is: ${numTokens}`)
-        } else {
-            numTokens = this.getTokenCount(prompt);
+            // Add 2 tokens for metadata after all messages have been counted.
+            currentTokenCount += 2;
         }
+
         // Use up to `this.maxContextTokens` tokens (prompt + response), but try to leave `this.maxTokens` tokens for the response.
-        this.modelOptions.max_tokens = Math.min(this.maxContextTokens - numTokens, this.maxResponseTokens);
+        this.modelOptions.max_tokens = Math.min(this.maxContextTokens - currentTokenCount, this.maxResponseTokens);
+
         if (isChatGptModel) {
-            return [
-                instructionsPayload,
-                messagePayload,
-            ];
+            return { prompt: [instructionsPayload, messagePayload], context };
         }
-        return prompt;
+        return { prompt, context };
     }
 
     getTokenCount(text) {
@@ -509,30 +605,34 @@ export default class ChatGPTClient {
     /**
      * Algorithm adapted from "6. Counting tokens for chat API calls" of
      * https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
-     * @param {*[]} messages
+     *
+     * An additional 2 tokens need to be added for metadata after all messages have been counted.
+     *
+     * @param {*} message
      */
-    static getTokenCountForMessages(messages) {
-        // Get the encoding tokenizer
-        const tokenizer = CHATGPT_TOKENIZER;
+    getTokenCountForMessage(message) {
+        let tokensPerMessage;
+        let nameAdjustment;
+        if (this.modelOptions.model.startsWith('gpt-4')) {
+            tokensPerMessage = 3;
+            nameAdjustment = 1;
+        } else {
+            tokensPerMessage = 4;
+            nameAdjustment = -1;
+        }
 
-        // Map each message to the number of tokens it contains
-        const messageTokenCounts = messages.map((message) => {
-            // Map each property of the message to the number of tokens it contains
-            const propertyTokenCounts = Object.entries(message).map(([key, value]) => {
-                // Count the number of tokens in the property value
-                const numTokens = tokenizer.encode(value).length;
+        // Map each property of the message to the number of tokens it contains
+        const propertyTokenCounts = Object.entries(message).map(([key, value]) => {
+            // Count the number of tokens in the property value
+            const numTokens = this.getTokenCount(value);
 
-                // Subtract 1 token if the property key is 'name'
-                const adjustment = (key === 'name') ? 1 : 0;
-                return numTokens - adjustment;
-            });
-
-            // Sum the number of tokens in all properties and add 4 for metadata
-            return propertyTokenCounts.reduce((a, b) => a + b, 4);
+            // Adjust by `nameAdjustment` tokens if the property key is 'name'
+            const adjustment = (key === 'name') ? nameAdjustment : 0;
+            return numTokens + adjustment;
         });
 
-        // Sum the number of tokens in all messages and add 2 for metadata
-        return messageTokenCounts.reduce((a, b) => a + b, 2);
+        // Sum the number of tokens in all properties and add `tokensPerMessage` for metadata
+        return propertyTokenCounts.reduce((a, b) => a + b, tokensPerMessage);
     }
 
     /**
@@ -546,7 +646,8 @@ export default class ChatGPTClient {
         const orderedMessages = [];
         let currentMessageId = parentMessageId;
         while (currentMessageId) {
-            const message = messages.find((m) => m.id === currentMessageId);
+            // eslint-disable-next-line no-loop-func
+            const message = messages.find(m => m.id === currentMessageId);
             if (!message) {
                 break;
             }
