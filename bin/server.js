@@ -8,6 +8,7 @@ import { KeyvFile } from 'keyv-file';
 import ChatGPTClient from '../src/ChatGPTClient.js';
 import ChatGPTBrowserClient from '../src/ChatGPTBrowserClient.js';
 import BingAIClient from '../src/BingAIClient.js';
+import { Agent } from 'undici';
 
 const arg = process.argv.find(_arg => _arg.startsWith('--settings'));
 const path = arg?.split('=')[1] ?? './settings.js';
@@ -159,6 +160,56 @@ server.post('/conversation', async (request, reply) => {
         return reply.raw.end();
     }
     return reply.code(code).send({ error: message });
+});
+
+server.post('/harm-check', async (request, reply) => {
+    const body = request.body || {};
+    let error;
+    try {
+      const message = body.message;
+      const url = 'https://api.openai.com/v1/moderations'; 
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+    };
+    console.log(`headers : ${JSON.stringify(headers)}`)
+    const data = {
+        input: message
+    };
+    const opts = {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+        dispatcher: new Agent({
+            bodyTimeout: 0,
+            headersTimeout: 0,
+        }),
+    };
+
+    const response = await fetch(
+        url,
+        {
+            ...opts,
+        },
+    );
+    if (response.status !== 200) {  
+        const body = await response.text();
+        console.log
+        const error = new Error(`Failed to send message. HTTP ${response.status} - ${body}`);
+        error.status = response.status;
+        try {
+            error.json = JSON.parse(body);
+        } catch {
+            error.body = body;
+        }
+        throw error;
+    }
+    const resp = await response.json()
+    reply.code(response.status).send(resp);
+    } catch (e) {
+        console.log(e.message)
+        error = e;
+    }
 });
 
 server.get('/healthCheck', async (request, reply) => {

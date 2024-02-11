@@ -49,14 +49,14 @@ export default class ChatGPTClient {
             ...modelOptions,
             // set some good defaults (check for undefined in some cases because they may be 0)
             model: modelOptions.model || CHATGPT_MODEL,
-            temperature: 1.5,
+            temperature: 1.4,
             top_p: 0.4,
-            presence_penalty: 0.8,
+            presence_penalty: 0.2,
             stop: modelOptions.stop,
         };
         console.log(this.modelOptions);
 
-        this.isChatGptModel = this.modelOptions.model.startsWith('gpt-');
+        this.isChatGptModel = this.modelOptions.model.startsWith('gpt-') || this.modelOptions.model.startsWith('ft:gpt-');
         const { isChatGptModel } = this;
         this.isUnofficialChatGptModel = this.modelOptions.model.startsWith('text-chat') || this.modelOptions.model.startsWith('text-davinci-002-render');
         const { isUnofficialChatGptModel } = this;
@@ -186,7 +186,6 @@ export default class ChatGPTClient {
         if (this.options.proxy) {
             opts.dispatcher = new ProxyAgent(this.options.proxy);
         }
-
         if (modelOptions.stream) {
             // eslint-disable-next-line no-async-promise-executor
             return new Promise(async (resolve, reject) => {
@@ -353,7 +352,7 @@ ${botMessage.message}
         if (this.options.keepNecessaryMessagesOnly) {
             conversation.messages = context;
         }
-        console.log(`Prompt built. ConversationId: ${conversationId}, ParentId: ${parentMessageId}`);
+        console.log(`Prompt built. ConversationId: ${conversationId}, ParentId: ${parentMessageId}, prompt: ${JSON.stringify(payload)}`);
         let reply = '';
         let result = null;
         if (typeof opts.onProgress === 'function') {
