@@ -100,6 +100,7 @@ export default {
                 // Other options like `modelOptions.model` will not be allowed to be changed.
                 // If you want to allow changing all `modelOptions`, define `modelOptions` here instead of `modelOptions.temperature`.
                 'modelOptions.temperature',
+                'modelOptions.model'
             ],
         },
     },

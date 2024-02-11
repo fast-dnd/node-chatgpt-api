@@ -172,7 +172,6 @@ server.post('/harm-check', async (request, reply) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
     };
-    console.log(`headers : ${JSON.stringify(headers)}`)
     const data = {
         input: message
     };
