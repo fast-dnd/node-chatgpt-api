@@ -139,7 +139,6 @@ export default class ChatGPTClient {
     }
 
     async getCompletion(input, onProgress, abortController = null) {
-    
         if (!abortController) {
             abortController = new AbortController();
         }
@@ -239,7 +238,7 @@ export default class ChatGPTClient {
                             }
                             if (message.data === '[DONE]') {
                                 onProgress('[DONE]');
-                                console.log("Received final [DONE] chunk for prompt.")
+                                console.log('Received final [DONE] chunk for prompt.');
                                 abortController.abort();
                                 resolve();
                                 done = true;
@@ -318,16 +317,12 @@ ${botMessage.message}
             ? opts.conversation
             : await this.conversationsCache.get(conversationId);
 
-        let isNewConversation = false;
         if (!conversation) {
             conversation = {
                 messages: [],
                 createdAt: Date.now(),
             };
-            isNewConversation = true;
         }
-
-        const shouldGenerateTitle = opts.shouldGenerateTitle && isNewConversation;
 
         const userMessage = {
             id: crypto.randomUUID(),
@@ -407,7 +402,7 @@ ${botMessage.message}
             role: 'ChatGPT',
             message: reply,
         };
-        const cleanText = replyMessage.message.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+        const cleanText = replyMessage.message.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
         replyMessage.message = cleanText;
         conversation.messages.push(replyMessage);
         await this.conversationsCache.set(conversationId, conversation);
@@ -426,11 +421,11 @@ ${botMessage.message}
         const conversationId = crypto.randomUUID();
         const parentMessageId = crypto.randomUUID();
 
-        let conversation = {
+        const conversation = {
             messages: [],
             createdAt: Date.now(),
         };
-        
+
         const userMessage = {
             id: crypto.randomUUID(),
             parentMessageId,
@@ -444,7 +439,7 @@ ${botMessage.message}
         if (this.isChatGptModel) {
             // Doing it this way instead of having each message be a separate element in the array seems to be more reliable,
             // especially when it comes to keeping the AI in character. It also seems to improve coherency and context retention.
-            payload = await this.buildPrompt(conversation.messages, userMessage.id, true);            
+            payload = await this.buildPrompt(conversation.messages, userMessage.id, true);
         } else {
             payload = await this.buildPrompt(conversation.messages, userMessage.id);
         }
@@ -478,11 +473,6 @@ ${botMessage.message}
             details: result || {},
         };
 
-        if (shouldGenerateTitle) {
-            conversation.title = await this.generateTitle(userMessage, replyMessage);
-            returnData.title = conversation.title;
-        }
-
         await this.conversationsCache.set(conversationId, conversation);
 
         if (this.options.returnConversation) {
@@ -503,7 +493,7 @@ ${botMessage.message}
             }
             promptPrefix = `${this.startToken}Instructions:\n${promptPrefix}$`;
         } else {
-            promptPrefix = `${this.startToken}Instructions:\nYou are ChatGPT, a large language model trained by OpenAI.\n${this.endToken}\n\n`
+            promptPrefix = `${this.startToken}Instructions:\nYou are ChatGPT, a large language model trained by OpenAI.\n${this.endToken}\n\n`;
         }
 
         const promptSuffix = `${this.startToken}${this.chatGptLabel}:\n`; // Prompt ChatGPT to respond.
@@ -532,19 +522,19 @@ ${botMessage.message}
 
         // Iterate backwards through the messages, adding them to the prompt until we reach the max token count.
         // Do this within a recursive async function so that it doesn't block the event loop for too long.
-        const lastUserIteration = orderedMessages.length -1;
+        const lastUserIteration = orderedMessages.length - 1;
         const buildPromptBody = async (iteration) => {
             if (currentTokenCount < maxTokenCount && orderedMessages.length > 0) {
                 console.log(`Adding tokens in iterations. Current token count: ${currentTokenCount}`);
                 const message = orderedMessages.pop();
-                
+
                 const roleLabel = message.role === 'User' ? this.userLabel : this.chatGptLabel;
-                /* Pop logic explanation: 
+                /* Pop logic explanation:
                 [iteration < lastUserIteration -> I want first message on bottom bobInto to be there]
                 [iteration > 0 -> I want last User message to be there ]
                 */
-                if(roleLabel === 'User' && iteration > 0 && iteration < lastUserIteration) {
-                    message.message = "Some rules/instructions on how DM should continue the story...";
+                if (roleLabel === 'User' && iteration > 0 && iteration < lastUserIteration) {
+                    message.message = 'Some rules/instructions on how DM should continue the story...';
                 }
                 const messageString = `${this.startToken}${roleLabel}:\n${message.message}${this.endToken}\n`;
                 let newPromptBody;
@@ -563,7 +553,7 @@ ${botMessage.message}
                 const tokenCountForMessage = this.getTokenCount(messageString);
                 const newTokenCount = currentTokenCount + tokenCountForMessage;
                 if (newTokenCount > maxTokenCount) {
-                    console.log("!!! newTokenCount > maxTokenCount: ", newTokenCount);
+                    console.log('!!! newTokenCount > maxTokenCount: ', newTokenCount);
                     if (promptBody) {
                         // This message would put us over the token limit, so don't add it.
                         return false;
@@ -575,7 +565,7 @@ ${botMessage.message}
                 currentTokenCount = newTokenCount;
                 // wait for next tick to avoid blocking the event loop
                 await new Promise(resolve => setImmediate(resolve));
-                return buildPromptBody();
+                return buildPromptBody(iteration + 1);
             }
             return true;
         };
