@@ -75,6 +75,11 @@ export default class OctoAIClient {
             top_p: 0.9,
             stream: modelOptions.stream,
         });
+        if (modelOptions.stream) {
+            for await (const chunk of response) {
+                onProgress(chunk);
+            }
+        }
         return response;
     }
 
@@ -123,7 +128,6 @@ export default class OctoAIClient {
             await this.getCompletion(
                 context,
                 (progressMessage) => {
-                    console.log(`STANISSS: ${progressMessage}`);
                     if (progressMessage === '[DONE]') {
                         return;
                     }
