@@ -3,9 +3,9 @@ export default {
     // This is used for storing conversations, and supports additional drivers (conversations are stored in memory by default).
     // Only applies when using `ChatGPTClient`.
     cacheOptions: {
-        uri : process.env.REDIS_URL || "redis://localhost:6379",
-        adapter : "redis",
-        ttl : 1800000 // 30 minutes in ms
+        uri: process.env.REDIS_URL || 'redis://localhost:6379',
+        adapter: 'redis',
+        ttl: 1800000, // 30 minutes in ms
     },
     // If set, `ChatGPTClient` will use `keyv-file` to store conversations to this JSON file instead of in memory.
     // However, `cacheOptions.store` will override this if set
@@ -33,7 +33,20 @@ export default {
         // userLabel: 'User',
         // (Optional) Set a custom name for ChatGPT ("ChatGPT" by default)
         chatGptLabel: 'AI story teller',
-        promptPrefix: `You are AI Story teller narrating a story to players in interactive game`,
+        promptPrefix: 'You are AI Story teller narrating a story to players in interactive game',
+        // (Optional) Set to true to enable `console.debug()` logging
+        debug: false,
+    },
+    octoAIClient: {
+        apiKey: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjNkMjMzOTQ5In0.eyJzdWIiOiIwNDU2NDhmZS05MjlhLTQ4NTItOTJiOS0xZmFlNjE2ZGMyYjQiLCJ0eXBlIjoidXNlckFjY2Vzc1Rva2VuIiwidGVuYW50SWQiOiI2ZDU2ZTM1Mi0wOWI2LTRkMTAtOGY3Yy00MDVlZTg4NzIzNmUiLCJ1c2VySWQiOiJkYzNjY2MyMi0yYjZiLTRiZWYtYTBkMi02NTJiMWMwYTkwZjMiLCJyb2xlcyI6WyJGRVRDSC1ST0xFUy1CWS1BUEkiXSwicGVybWlzc2lvbnMiOlsiRkVUQ0gtUEVSTUlTU0lPTlMtQlktQVBJIl0sImF1ZCI6IjNkMjMzOTQ5LWEyZmItNGFiMC1iN2VjLTQ2ZjYyNTVjNTEwZSIsImlzcyI6Imh0dHBzOi8vaWRlbnRpdHkub2N0b21sLmFpIiwiaWF0IjoxNzA4NjI0NTIwfQ.Bk9p5S_BbRs1XyJVrQG29kPlV1KbiN24aK68l2WTEi9d3POrBJXWU-60IpJ0etd310ndZur5aVGuaJy9Ww9O1d-DAvRSRj_acF6GGv36r9QFVAaz2mHxUx0lmHkgiuEaaIn0dsdr9wPe9rOLws-TzEvIFzKXTiCnZ8tL67-CHogpFdL6cghOFAYnyZIVTesrKFENVJaO3mIMvWDH-6NxmIizzCMPlBwslYpD7cGwc51rVcB0dsCAsMxCLPdmrzhASJJM2hKH4CSuqzUV9vqlrULnTpGzB0mZ8TALdGVzWCj36FdfjhnIa619OtiTmcRMk6cUFjwp0B0ZSXFutCdysg', // process.env.OCTOAI_API_KEY || '',
+        modelOptions: {
+            // You can override the model name and any other parameters here.
+            model: 'mixtral-8x7b-instruct-fp16',
+            max_tokens: 512,
+        },
+        userLabel: 'user',
+        octoAiLabel: 'system',
+        promptPrefix: 'You are AI Story teller narrating a story to players in interactive game',
         // (Optional) Set to true to enable `console.debug()` logging
         debug: false,
     },
@@ -86,7 +99,7 @@ export default {
         perMessageClientOptionsWhitelist: {
             // The ability to switch clients using `clientOptions.clientToUse` will be disabled if `validClientsToUse` is not set.
             // To allow switching clients per message, you must set `validClientsToUse` to a non-empty array.
-            validClientsToUse: ['bing', 'chatgpt', 'chatgpt-browser'], // values from possible `clientToUse` options above
+            validClientsToUse: ['bing', 'chatgpt', 'chatgpt-browser', 'octoAi'], // values from possible `clientToUse` options above
             // The Object key, e.g. "chatgpt", is a value from `validClientsToUse`.
             // If not set, ALL options will be ALLOWED to be changed. For example, `bing` is not defined in `perMessageClientOptionsWhitelist` above,
             // so all options for `bingAiClient` will be allowed to be changed.
@@ -100,7 +113,7 @@ export default {
                 // Other options like `modelOptions.model` will not be allowed to be changed.
                 // If you want to allow changing all `modelOptions`, define `modelOptions` here instead of `modelOptions.temperature`.
                 'modelOptions.temperature',
-                'modelOptions.model'
+                'modelOptions.model',
             ],
         },
     },
