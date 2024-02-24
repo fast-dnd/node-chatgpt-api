@@ -46,8 +46,8 @@ export default class OctoAIClient {
             ...modelOptions,
             // set some good defaults (check for undefined in some cases because they may be 0)
             model: modelOptions.model || OCTOAI_DEFAULT_MODEL,
-            temperature: 1.4,
-            top_p: 0.35,
+            temperature: 0.1,
+            top_p: 0.9,
             presence_penalty: 0.25,
         };
 
@@ -160,8 +160,6 @@ export default class OctoAIClient {
             role: opts.clientOptions.octoAiLabel,
             content: reply,
         };
-        const cleanText = replyMessage.content.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-        replyMessage.content = cleanText;
         conversation.messages.push(replyMessage);
         await this.conversationsCache.set(conversationId, conversation);
         return {
