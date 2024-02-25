@@ -3,9 +3,9 @@ export default {
     // This is used for storing conversations, and supports additional drivers (conversations are stored in memory by default).
     // Only applies when using `ChatGPTClient`.
     cacheOptions: {
-        uri : process.env.REDIS_URL || "redis://localhost:6379",
-        adapter : "redis",
-        ttl : 1800000 // 30 minutes in ms
+        uri: process.env.REDIS_URL || 'redis://localhost:6379',
+        adapter: 'redis',
+        ttl: 1800000, // 30 minutes in ms
     },
     // If set, `ChatGPTClient` will use `keyv-file` to store conversations to this JSON file instead of in memory.
     // However, `cacheOptions.store` will override this if set
@@ -33,7 +33,20 @@ export default {
         // userLabel: 'User',
         // (Optional) Set a custom name for ChatGPT ("ChatGPT" by default)
         chatGptLabel: 'AI story teller',
-        promptPrefix: `You are AI Story teller narrating a story to players in interactive game`,
+        promptPrefix: 'You are AI Story teller narrating a story to players in interactive game',
+        // (Optional) Set to true to enable `console.debug()` logging
+        debug: false,
+    },
+    octoAIClient: {
+        apiKey: process.env.OCTOAI_API_KEY || '',
+        modelOptions: {
+            // You can override the model name and any other parameters here.
+            model: 'mixtral-8x7b-instruct-fp16',
+            max_tokens: 512,
+        },
+        userLabel: 'user',
+        octoAiLabel: 'system',
+        promptPrefix: 'You are AI Story teller narrating a story to players in interactive game',
         // (Optional) Set to true to enable `console.debug()` logging
         debug: false,
     },
@@ -86,7 +99,7 @@ export default {
         perMessageClientOptionsWhitelist: {
             // The ability to switch clients using `clientOptions.clientToUse` will be disabled if `validClientsToUse` is not set.
             // To allow switching clients per message, you must set `validClientsToUse` to a non-empty array.
-            validClientsToUse: ['bing', 'chatgpt', 'chatgpt-browser'], // values from possible `clientToUse` options above
+            validClientsToUse: ['bing', 'chatgpt', 'chatgpt-browser', 'octoAi'], // values from possible `clientToUse` options above
             // The Object key, e.g. "chatgpt", is a value from `validClientsToUse`.
             // If not set, ALL options will be ALLOWED to be changed. For example, `bing` is not defined in `perMessageClientOptionsWhitelist` above,
             // so all options for `bingAiClient` will be allowed to be changed.
@@ -100,7 +113,7 @@ export default {
                 // Other options like `modelOptions.model` will not be allowed to be changed.
                 // If you want to allow changing all `modelOptions`, define `modelOptions` here instead of `modelOptions.temperature`.
                 'modelOptions.temperature',
-                'modelOptions.model'
+                'modelOptions.model',
             ],
         },
     },

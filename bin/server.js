@@ -1,14 +1,16 @@
 #!/usr/bin/env node
+/* eslint-disable no-plusplus */
 import fastify from 'fastify';
 import cors from '@fastify/cors';
 import { FastifySSEPlugin } from '@waylaidwanderer/fastify-sse-v2';
 import fs from 'fs';
 import { pathToFileURL } from 'url';
 import { KeyvFile } from 'keyv-file';
+import { Agent } from 'undici';
 import ChatGPTClient from '../src/ChatGPTClient.js';
 import ChatGPTBrowserClient from '../src/ChatGPTBrowserClient.js';
 import BingAIClient from '../src/BingAIClient.js';
-import { Agent } from 'undici';
+import OctoAIClient from '../src/OctoAiClient.js';
 
 const arg = process.argv.find(_arg => _arg.startsWith('--settings'));
 const path = arg?.split('=')[1] ?? './settings.js';
@@ -40,7 +42,7 @@ if (settings.storageFilePath && !settings.cacheOptions.store) {
     settings.cacheOptions.store = new KeyvFile({ filename: settings.storageFilePath });
 }
 
-const clientToUse = settings.apiOptions?.clientToUse || settings.clientToUse || 'chatgpt';
+let clientToUse = settings.apiOptions?.clientToUse || settings.clientToUse || 'chatgpt';
 const perMessageClientOptionsWhitelist = settings.apiOptions?.perMessageClientOptionsWhitelist || null;
 
 const server = fastify();
@@ -89,7 +91,9 @@ server.post('/conversation', async (request, reply) => {
             // noinspection ExceptionCaughtLocallyJS
             throw invalidError;
         }
-
+        if (body.clientToUse) {
+            clientToUse = body.clientToUse;
+        }
         let clientToUseForMessage = clientToUse;
         const clientOptions = filterClientOptions(body.clientOptions, clientToUseForMessage);
         if (clientOptions && clientOptions.clientToUse) {
@@ -128,11 +132,11 @@ server.post('/conversation', async (request, reply) => {
             console.debug(result);
         }
         if (body.stream === true) {
-            console.log("STREAMING HAS FINISHED, MANUALLY SENDING RESPONSE ON STEREAM");
+            console.log('STREAMING HAS FINISHED, MANUALLY SENDING RESPONSE ON STEREAM');
             console.log(`Sending: { event: 'result', id: '', data: JSON.stringify(result) } ${JSON.stringify(result)}`);
             reply.sse({ event: 'result', id: '', data: JSON.stringify(result) });
             await nextTick(); // let him wait one more thick for this so that messages come in different chunks
-            console.log(`Sending: { id: '', data: '[DONE]' }`);
+            console.log('Sending: { id: \'\', data: \'[DONE]\' }');
             reply.sse({ id: '', data: '[DONE]' });
             await nextTick();
             return reply.raw.end();
@@ -166,55 +170,53 @@ server.post('/harm-check', async (request, reply) => {
     const body = request.body || {};
     let error;
     try {
-      const message = body.message;
-      const url = 'https://api.openai.com/v1/moderations'; 
-    const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-    };
-    const data = {
-        input: message
-    };
-    const opts = {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(data),
-        dispatcher: new Agent({
-            bodyTimeout: 0,
-            headersTimeout: 0,
-        }),
-    };
+        const { message } = body;
+        const url = 'https://api.openai.com/v1/moderations';
+        const headers = {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        };
+        const data = {
+            input: message,
+        };
+        const opts = {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(data),
+            dispatcher: new Agent({
+                bodyTimeout: 0,
+                headersTimeout: 0,
+            }),
+        };
 
-    const response = await fetch(
-        url,
-        {
-            ...opts,
-        },
-    );
-    if (response.status !== 200) {  
-        const body = await response.text();
-        console.log
-        const error = new Error(`Failed to send message. HTTP ${response.status} - ${body}`);
-        error.status = response.status;
-        try {
-            error.json = JSON.parse(body);
-        } catch {
-            error.body = body;
+        const response = await fetch(
+            url,
+            {
+                ...opts,
+            },
+        );
+        if (response.status !== 200) {
+            const body2 = await response.text();
+            error = new Error(`Failed to send message. HTTP ${response.status} - ${body}`);
+            error.status = response.status;
+            try {
+                error.json = JSON.parse(body2);
+            } catch {
+                error.body = body;
+            }
+            throw error;
         }
-        throw error;
-    }
-    const resp = await response.json()
-    reply.code(response.status).send(resp);
+        const resp = await response.json();
+        reply.code(response.status).send(resp);
     } catch (e) {
-        console.log(e.message)
+        console.log(e.message);
         error = e;
     }
 });
 
 server.get('/healthCheck', async (request, reply) => {
-    reply.code(200).send({status: "alive" });
+    reply.code(200).send({ status: 'alive' });
 });
-
 
 server.listen({
     port: settings.apiOptions?.port || settings.port || 3000,
@@ -245,6 +247,13 @@ function getClient(clientToUseForMessage) {
                 settings.chatGptClient,
                 settings.cacheOptions,
             );
+        case 'octoAi':
+            return new OctoAIClient(
+                settings.apiKey,
+                settings.octoAIClient,
+                settings.cacheOptions,
+            );
+
         default:
             throw new Error(`Invalid clientToUse: ${clientToUseForMessage}`);
     }
