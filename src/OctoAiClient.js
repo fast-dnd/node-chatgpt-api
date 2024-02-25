@@ -4,7 +4,8 @@ import Keyv from 'keyv';
 import { Client } from '@octoai/client';
 
 const OCTOAI_DEFAULT_MODEL = 'mixtral-8x7b-instruct-fp16';
-const client = new Client(process.env.OCTOAI_API_KEY);
+// const client = new Client(process.env.OCTOAI_API_KEY);
+const client = new Client('eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjNkMjMzOTQ5In0.eyJzdWIiOiIwNDU2NDhmZS05MjlhLTQ4NTItOTJiOS0xZmFlNjE2ZGMyYjQiLCJ0eXBlIjoidXNlckFjY2Vzc1Rva2VuIiwidGVuYW50SWQiOiI2ZDU2ZTM1Mi0wOWI2LTRkMTAtOGY3Yy00MDVlZTg4NzIzNmUiLCJ1c2VySWQiOiJkYzNjY2MyMi0yYjZiLTRiZWYtYTBkMi02NTJiMWMwYTkwZjMiLCJyb2xlcyI6WyJGRVRDSC1ST0xFUy1CWS1BUEkiXSwicGVybWlzc2lvbnMiOlsiRkVUQ0gtUEVSTUlTU0lPTlMtQlktQVBJIl0sImF1ZCI6IjNkMjMzOTQ5LWEyZmItNGFiMC1iN2VjLTQ2ZjYyNTVjNTEwZSIsImlzcyI6Imh0dHBzOi8vaWRlbnRpdHkub2N0b21sLmFpIiwiaWF0IjoxNzA4NjI0NTIwfQ.Bk9p5S_BbRs1XyJVrQG29kPlV1KbiN24aK68l2WTEi9d3POrBJXWU-60IpJ0etd310ndZur5aVGuaJy9Ww9O1d-DAvRSRj_acF6GGv36r9QFVAaz2mHxUx0lmHkgiuEaaIn0dsdr9wPe9rOLws-TzEvIFzKXTiCnZ8tL67-CHogpFdL6cghOFAYnyZIVTesrKFENVJaO3mIMvWDH-6NxmIizzCMPlBwslYpD7cGwc51rVcB0dsCAsMxCLPdmrzhASJJM2hKH4CSuqzUV9vqlrULnTpGzB0mZ8TALdGVzWCj36FdfjhnIa619OtiTmcRMk6cUFjwp0B0ZSXFutCdysg');
 
 export default class OctoAIClient {
     constructor(
@@ -69,9 +70,9 @@ export default class OctoAIClient {
             messages: input,
             model: modelOptions.model,
             max_tokens: modelOptions.max_tokens,
-            presence_penalty: 0,
+            presence_penalty: 0.3,
             temperature: 0.1,
-            top_p: 0.9,
+            top_p: 0.3,
             stream: modelOptions.stream,
         });
         if (modelOptions.stream) {
@@ -181,7 +182,7 @@ export default class OctoAIClient {
         const buildPromptBody = async (iteration) => {
             if (orderedMessages.length > 0) {
                 const message = orderedMessages.pop();
-                const roleLabel = message.role === this.userLabel ? this.userLabel : this.octoAILable;
+                const roleLabel = message.role === this.userLabel ? this.userLabel : this.octoAiLable;
                 /* Pop logic explanation:
                 [iteration < lastUserIteration -> I want first message on bottom bobInto to be there]
                 [iteration > 0 -> I want last User message to be there ]
