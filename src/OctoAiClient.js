@@ -188,7 +188,7 @@ export default class OctoAIClient {
                 [iteration > 0 -> I want last User message to be there ]
                 */
                 if (roleLabel === this.userLabel && iteration > 0 && iteration < lastUserIteration) {
-                    message.message = 'Some rules/instructions on how DM should continue the story...';
+                    message.content = 'Some rules/instructions on how DM should continue the story...';
                 }
                 context.unshift(message);
                 // wait for next tick to avoid blocking the event loop
