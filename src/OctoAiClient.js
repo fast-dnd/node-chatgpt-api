@@ -69,9 +69,9 @@ export default class OctoAIClient {
             messages: input,
             model: modelOptions.model,
             max_tokens: modelOptions.max_tokens,
-            presence_penalty: 0.3,
+            presence_penalty: 0.1,
             temperature: 0.1,
-            top_p: 0.3,
+            top_p: 0.1,
             stream: modelOptions.stream,
         });
         if (modelOptions.stream) {
