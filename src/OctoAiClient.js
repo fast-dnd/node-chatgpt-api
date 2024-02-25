@@ -153,12 +153,19 @@ export default class OctoAIClient {
             reply = result.choices[0].message.content;
         }
         reply = reply.trim();
+        const lastSentenceEnd = Math.max(
+            reply.lastIndexOf('.'),
+            reply.lastIndexOf('!'),
+            reply.lastIndexOf('?'),
+            reply.lastIndexOf(')'),
+        );
+        const trimmedReply = lastSentenceEnd !== -1 ? reply.slice(0, lastSentenceEnd + 1) : reply;
 
         const replyMessage = {
             id: crypto.randomUUID(),
             parentMessageId: userMessage.id,
             role: opts.clientOptions.octoAiLabel,
-            content: reply,
+            content: trimmedReply,
         };
         conversation.messages.push(replyMessage);
         await this.conversationsCache.set(conversationId, conversation);

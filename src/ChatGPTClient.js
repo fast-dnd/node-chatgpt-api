@@ -395,12 +395,19 @@ ${botMessage.message}
         }
 
         reply = reply.trim();
+        const lastSentenceEnd = Math.max(
+            reply.lastIndexOf('.'),
+            reply.lastIndexOf('!'),
+            reply.lastIndexOf('?'),
+            reply.lastIndexOf(')'),
+        );
+        const trimmedReply = lastSentenceEnd !== -1 ? reply.slice(0, lastSentenceEnd + 1) : reply;
 
         const replyMessage = {
             id: crypto.randomUUID(),
             parentMessageId: userMessage.id,
             role: 'ChatGPT',
-            message: reply,
+            message: trimmedReply,
         };
         const cleanText = replyMessage.message.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
         replyMessage.message = cleanText;

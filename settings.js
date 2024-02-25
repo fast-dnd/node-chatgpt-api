@@ -114,6 +114,7 @@ export default {
                 // If you want to allow changing all `modelOptions`, define `modelOptions` here instead of `modelOptions.temperature`.
                 'modelOptions.temperature',
                 'modelOptions.model',
+                'modelOptions.max_tokens',
             ],
         },
     },
