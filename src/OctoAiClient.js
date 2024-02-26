@@ -107,8 +107,9 @@ export default class OctoAIClient {
         const userMessage = {
             id: crypto.randomUUID(),
             parentMessageId,
-            role: opts.clientOptions.userLabel,
+            role: 'user',
             content: message,
+            message, // to enable gpt client to continue conversation if user switches ai model
         };
         conversation.messages.push(userMessage);
 
@@ -164,8 +165,9 @@ export default class OctoAIClient {
         const replyMessage = {
             id: crypto.randomUUID(),
             parentMessageId: userMessage.id,
-            role: opts.clientOptions.octoAiLabel,
+            role: 'system',
             content: trimmedReply,
+            message: trimmedReply,
         };
         conversation.messages.push(replyMessage);
         await this.conversationsCache.set(conversationId, conversation);
@@ -188,7 +190,7 @@ export default class OctoAIClient {
         const buildPromptBody = async (iteration) => {
             if (orderedMessages.length > 0) {
                 const message = orderedMessages.pop();
-                const roleLabel = message.role === this.userLabel ? this.userLabel : this.octoAiLable;
+                const roleLabel = message.role === 'user' ? 'user' : 'system';
                 /* Pop logic explanation:
                 [iteration < lastUserIteration -> I want first message on bottom bobInto to be there]
                 [iteration > 0 -> I want last User message to be there ]

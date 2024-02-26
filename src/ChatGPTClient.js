@@ -72,7 +72,7 @@ export default class ChatGPTClient {
             throw new Error(`maxPromptTokens + max_tokens (${this.maxPromptTokens} + ${this.maxResponseTokens} = ${this.maxPromptTokens + this.maxResponseTokens}) must be less than or equal to maxContextTokens (${this.maxContextTokens})`);
         }
 
-        this.userLabel = this.options.userLabel || 'User';
+        this.userLabel = this.options.userLabel || 'user';
         this.chatGptLabel = this.options.chatGptLabel || 'ChatGPT';
 
         if (isChatGptModel) {
@@ -327,8 +327,9 @@ ${botMessage.message}
         const userMessage = {
             id: crypto.randomUUID(),
             parentMessageId,
-            role: 'User',
+            role: 'user',
             message,
+            content: message, // to enable option for octoai to continue story if user swithces ai model
         };
         conversation.messages.push(userMessage);
 
@@ -406,11 +407,10 @@ ${botMessage.message}
         const replyMessage = {
             id: crypto.randomUUID(),
             parentMessageId: userMessage.id,
-            role: 'ChatGPT',
+            role: 'system',
             message: trimmedReply,
+            content: trimmedReply,
         };
-        const cleanText = replyMessage.message.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-        replyMessage.message = cleanText;
         conversation.messages.push(replyMessage);
         await this.conversationsCache.set(conversationId, conversation);
         return {
@@ -491,7 +491,6 @@ ${botMessage.message}
 
     async buildPrompt(messages, parentMessageId, { isChatGptModel = false, promptPrefix = null }) {
         const orderedMessages = this.constructor.getMessagesForConversation(messages, parentMessageId);
-
         promptPrefix = (promptPrefix || this.options.promptPrefix || '').trim();
         if (promptPrefix) {
             // If the prompt prefix doesn't end with the end token, add it.
@@ -503,7 +502,7 @@ ${botMessage.message}
             promptPrefix = `${this.startToken}Instructions:\nYou are ChatGPT, a large language model trained by OpenAI.\n${this.endToken}\n\n`;
         }
 
-        const promptSuffix = `${this.startToken}${this.chatGptLabel}:\n`; // Prompt ChatGPT to respond.
+        const promptSuffix = `${this.startToken}system:\n`; // Prompt ChatGPT to respond.
         const instructionsPayload = {
             role: 'system',
             name: 'instructions',
@@ -535,12 +534,12 @@ ${botMessage.message}
                 console.log(`Adding tokens in iterations. Current token count: ${currentTokenCount}`);
                 const message = orderedMessages.pop();
 
-                const roleLabel = message.role === 'User' ? this.userLabel : this.chatGptLabel;
+                const roleLabel = message.role === 'user' ? 'user' : 'system';
                 /* Pop logic explanation:
                 [iteration < lastUserIteration -> I want first message on bottom bobInto to be there]
                 [iteration > 0 -> I want last User message to be there ]
                 */
-                if (roleLabel === 'User' && iteration > 0 && iteration < lastUserIteration) {
+                if (roleLabel === 'user' && iteration > 0 && iteration < lastUserIteration) {
                     message.message = 'Some rules/instructions on how DM should continue the story...';
                 }
                 const messageString = `${this.startToken}${roleLabel}:\n${message.message}${this.endToken}\n`;
