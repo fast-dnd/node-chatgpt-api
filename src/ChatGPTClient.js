@@ -540,7 +540,8 @@ ${botMessage.message}
                 [iteration > 0 -> I want last User message to be there ]
                 */
                 if (roleLabel === 'user' && iteration > 0 && iteration < lastUserIteration) {
-                    message.message = 'Some rules/instructions on how DM should continue the story...';
+                    message.message = 'Continue the story';
+                    message.content = 'Continue the story';
                 }
                 const messageString = `${this.startToken}${roleLabel}:\n${message.message}${this.endToken}\n`;
                 let newPromptBody;

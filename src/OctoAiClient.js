@@ -50,7 +50,8 @@ export default class OctoAIClient {
             top_p: 0.9,
             presence_penalty: 0.25,
         };
-
+        this.startToken = '||>';
+        this.endToken = '';
         this.userLabel = this.options.userLabel || 'user';
         this.octoAiLable = this.options.octoAiLabel || 'system';
         return this;
@@ -65,8 +66,18 @@ export default class OctoAIClient {
             modelOptions.stream = false;
         }
         console.log(`Current options: ${JSON.stringify(modelOptions)}`);
+        console.log(`length: ${input.length}, content: ${input}`);
         const response = await client.chat.completions.create({
-            messages: input,
+            messages: [
+                {
+                    role: 'system',
+                    content: 'You are a helpful screenwriting assistant. Follow the rules and narraite the story.',
+                },
+                {
+                    role: 'user',
+                    content: input,
+                },
+            ],
             model: modelOptions.model,
             max_tokens: modelOptions.max_tokens,
             presence_penalty: 0.1,
@@ -114,7 +125,8 @@ export default class OctoAIClient {
         conversation.messages.push(userMessage);
 
         console.log(`Building prompt. ConversationId: ${conversationId}, ParentId: ${parentMessageId}`);
-        const { context } = await this.buildPrompt(
+        // eslint-disable-next-line no-unused-vars
+        const { prompt: payload, context } = await this.buildPrompt(
             conversation.messages,
             userMessage.id,
             {
@@ -126,7 +138,7 @@ export default class OctoAIClient {
         let result = null;
         if (typeof opts.onProgress === 'function') {
             await this.getCompletion(
-                context,
+                payload,
                 (progressMessage) => {
                     if (progressMessage === '[DONE]') {
                         return;
@@ -148,7 +160,7 @@ export default class OctoAIClient {
             );
         } else {
             result = await this.getCompletion(
-                context,
+                payload,
                 null,
             );
             reply = result.choices[0].message.content;
@@ -181,9 +193,9 @@ export default class OctoAIClient {
 
     async buildPrompt(messages, parentMessageId) {
         const orderedMessages = this.constructor.getMessagesForConversation(messages, parentMessageId);
-
+        let promptBody = '';
         const context = [];
-
+        const promptSuffix = `${this.startToken}system:\n`; // Prompt ChatGPT to respond.
         // Iterate backwards through the messages, adding them to the prompt until we reach the max token count.
         // Do this within a recursive async function so that it doesn't block the event loop for too long.
         const lastUserIteration = orderedMessages.length - 1;
@@ -195,9 +207,12 @@ export default class OctoAIClient {
                 [iteration < lastUserIteration -> I want first message on bottom bobInto to be there]
                 [iteration > 0 -> I want last User message to be there ]
                 */
-                if (roleLabel === this.userLabel && iteration > 0 && iteration < lastUserIteration) {
-                    message.content = 'Some rules/instructions on how DM should continue the story...';
+                if (roleLabel === 'user' && iteration > 0 && iteration < lastUserIteration) {
+                    message.content = 'Continue the story';
+                    message.message = 'Continue the story';
                 }
+                const messageString = `${this.startToken}${roleLabel}:\n${message.content}${this.endToken}\n`;
+                promptBody = `${messageString}${promptBody}`;
                 context.unshift(message);
                 // wait for next tick to avoid blocking the event loop
                 await new Promise(resolve => setImmediate(resolve));
@@ -207,7 +222,8 @@ export default class OctoAIClient {
         };
 
         await buildPromptBody(0);
-        return { context };
+        const prompt = `${promptBody}${promptSuffix}`;
+        return { prompt, context };
     }
 
     /**
