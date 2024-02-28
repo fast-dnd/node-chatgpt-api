@@ -66,7 +66,6 @@ export default class OctoAIClient {
             modelOptions.stream = false;
         }
         console.log(`Current options: ${JSON.stringify(modelOptions)}`);
-        console.log(`length: ${input.length}, content: ${input}`);
         const response = await client.chat.completions.create({
             messages: [
                 {

@@ -132,8 +132,6 @@ server.post('/conversation', async (request, reply) => {
             console.debug(result);
         }
         if (body.stream === true) {
-            console.log('STREAMING HAS FINISHED, MANUALLY SENDING RESPONSE ON STEREAM');
-            console.log(`Sending: { event: 'result', id: '', data: JSON.stringify(result) } ${JSON.stringify(result)}`);
             reply.sse({ event: 'result', id: '', data: JSON.stringify(result) });
             await nextTick(); // let him wait one more thick for this so that messages come in different chunks
             console.log('Sending: { id: \'\', data: \'[DONE]\' }');
