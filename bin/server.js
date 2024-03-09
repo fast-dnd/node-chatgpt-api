@@ -11,6 +11,7 @@ import ChatGPTClient from '../src/ChatGPTClient.js';
 import ChatGPTBrowserClient from '../src/ChatGPTBrowserClient.js';
 import BingAIClient from '../src/BingAIClient.js';
 import OctoAIClient from '../src/OctoAiClient.js';
+import OpenRouterAiClient from '../src/OpenrouterAi.js';
 
 const arg = process.argv.find(_arg => _arg.startsWith('--settings'));
 const path = arg?.split('=')[1] ?? './settings.js';
@@ -249,6 +250,12 @@ function getClient(clientToUseForMessage) {
             return new OctoAIClient(
                 settings.apiKey,
                 settings.octoAIClient,
+                settings.cacheOptions,
+            );
+        case 'openrouter':
+            return new OpenRouterAiClient(
+                settings.apiKey,
+                settings.openrouterClient,
                 settings.cacheOptions,
             );
 

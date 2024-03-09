@@ -50,6 +50,19 @@ export default {
         // (Optional) Set to true to enable `console.debug()` logging
         debug: false,
     },
+    openrouterClient: {
+        apiKey: process.env.OPENROUTER_API_KEY || '',
+        modelOptions: {
+            // You can override the model name and any other parameters here.
+            model: 'mistralai/mistral-7b-instruct',
+            max_tokens: 512,
+        },
+        userLabel: 'user',
+        openrouterLabel: 'system',
+        promptPrefix: 'You are AI Story teller narrating a story to players in interactive game',
+        // (Optional) Set to true to enable `console.debug()` logging
+        debug: false,
+    },
     // Options for the Bing client
     bingAiClient: {
         // Necessary for some people in different countries, e.g. China (https://cn.bing.com)
