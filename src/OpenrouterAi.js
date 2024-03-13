@@ -67,6 +67,8 @@ export default class OpenRouterAiClient {
         const opts = {
             method: 'POST',
             headers: {
+                'HTTP-Referer': 'https://play.v3rpg.com',
+                'X-Title': 'v3rpg',
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(modelOptions),
