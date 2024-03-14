@@ -169,7 +169,6 @@ export default class OctoAIClient {
             reply.lastIndexOf('.'),
             reply.lastIndexOf('!'),
             reply.lastIndexOf('?'),
-            reply.lastIndexOf(')'),
         );
         const trimmedReply = lastSentenceEnd !== -1 ? reply.slice(0, lastSentenceEnd + 1) : reply;
 
