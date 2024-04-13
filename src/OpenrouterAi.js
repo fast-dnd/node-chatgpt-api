@@ -89,6 +89,8 @@ export default class OpenRouterAiClient {
         }
 
         console.log(`Current options: ${JSON.stringify(this.modelOptions)}`);
+        console.log(`opts: ${JSON.stringify(opts)}`);
+
         if (modelOptions.stream) {
             // eslint-disable-next-line no-async-promise-executor
             return new Promise(async (resolve, reject) => {
