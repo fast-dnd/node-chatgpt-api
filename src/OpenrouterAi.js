@@ -1,3 +1,4 @@
+/* eslint-disable space-before-blocks */
 import './fetch-polyfill.js';
 import crypto from 'crypto';
 import Keyv from 'keyv';
@@ -57,12 +58,21 @@ export default class OpenRouterAiClient {
     }
 
     // eslint-disable-next-line no-unused-vars
-    async getCompletion(input, onProgress) {
+    async getCompletion(messageArray, onProgress) {
         const modelOptions = { ...this.modelOptions };
         if (typeof onProgress === 'function') {
             modelOptions.stream = true;
         }
-        modelOptions.prompt = input;
+        let firstSystemFound = false;
+        modelOptions.messages = messageArray.map((message) => {
+            if (message.role === 'system' && !firstSystemFound) {
+                firstSystemFound = true;
+                return message; // Keep the first "system" as it is
+            } if (message.role === 'system') {
+                return { ...message, role: 'assistant' }; // Change subsequent "system" to "assistant"
+            }
+            return message;
+        });
         const url = this.completionsUrl;
         const opts = {
             method: 'POST',
@@ -74,7 +84,6 @@ export default class OpenRouterAiClient {
             body: JSON.stringify(modelOptions),
         };
         opts.headers.Authorization = `Bearer ${this.apiKey}`;
-
         if (this.options.headers) {
             opts.headers = { ...opts.headers, ...this.options.headers };
         }
@@ -174,14 +183,35 @@ export default class OpenRouterAiClient {
             };
         }
 
-        const userMessage = {
-            id: crypto.randomUUID(),
-            parentMessageId,
-            role: 'user',
-            content: message,
-            message,
-        };
-        conversation.messages.push(userMessage);
+        let userMessage;
+        if (conversation.messages.length === 0){
+            const systemMessageId = crypto.randomUUID();
+            const sMessage = {
+                id: systemMessageId,
+                parentMessageId,
+                role: 'system',
+                content: message,
+                message,
+            };
+            conversation.messages.push(sMessage);
+            userMessage = {
+                id: crypto.randomUUID(),
+                parentMessageId: systemMessageId,
+                role: 'user',
+                content: 'Create first part of the story',
+                message: 'Create first part of the story',
+            };
+            conversation.messages.push(userMessage);
+        } else {
+            userMessage = {
+                id: crypto.randomUUID(),
+                parentMessageId,
+                role: 'user',
+                content: message,
+                message,
+            };
+            conversation.messages.push(userMessage);
+        }
 
         console.log(`Building prompt. ConversationId: ${conversationId}, ParentId: ${parentMessageId}`);
         // eslint-disable-next-line no-unused-vars
@@ -197,12 +227,12 @@ export default class OpenRouterAiClient {
         let result = null;
         if (typeof opts.onProgress === 'function') {
             await this.getCompletion(
-                payload,
+                context,
                 (progressMessage) => {
                     if (progressMessage === '[DONE]') {
                         return;
                     }
-                    const token = progressMessage.choices[0]?.text;
+                    const token = progressMessage.choices[0]?.text || progressMessage.choices[0].delta?.content;
                     // first event's delta content is always undefined
                     if (!token) {
                         return;
@@ -219,10 +249,10 @@ export default class OpenRouterAiClient {
             );
         } else {
             result = await this.getCompletion(
-                payload,
+                context,
                 null,
             );
-            reply = result.choices[0].text;
+            reply = result.choices[0].text || result.choices[0].message?.content;
         }
         reply = reply.trim();
         const lastSentenceEnd = Math.max(
@@ -256,16 +286,18 @@ export default class OpenRouterAiClient {
         const promptSuffix = `${this.startToken}system:\n`; // Prompt ChatGPT to respond.
         // Iterate backwards through the messages, adding them to the prompt until we reach the max token count.
         // Do this within a recursive async function so that it doesn't block the event loop for too long.
-        const lastUserIteration = orderedMessages.length - 1;
         const buildPromptBody = async (iteration) => {
             if (orderedMessages.length > 0) {
                 const message = orderedMessages.pop();
-                const roleLabel = message.role === 'user' ? 'user' : 'system';
+                let roleLabel = message.role === 'user' ? 'user' : 'system';
+                if (roleLabel === 'system' && iteration > 1){
+                    roleLabel = 'assistant';
+                }
                 /* Pop logic explanation:
                 [iteration < lastUserIteration -> I want first message on bottom bobInto to be there]
                 [iteration > 0 -> I want last User message to be there ]
                 */
-                if (roleLabel === 'user' && iteration > 0 && iteration < lastUserIteration) {
+                if (roleLabel === 'user' && iteration > 0) {
                     message.content = 'Continue the story';
                     message.message = 'Continue the story';
                 }
