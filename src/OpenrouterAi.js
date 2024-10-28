@@ -192,16 +192,16 @@ export default class OpenRouterAiClient {
                 id: systemMessageId,
                 parentMessageId,
                 role: 'system',
-                content: message,
-                message,
+                content: 'You are AI assistant',
+                message: 'You are AI assistant',
             };
             conversation.messages.push(sMessage);
             userMessage = {
                 id: crypto.randomUUID(),
                 parentMessageId: systemMessageId,
                 role: 'user',
-                content: 'Create first part of the story',
-                message: 'Create first part of the story',
+                content: message,
+                message,
             };
             conversation.messages.push(userMessage);
         } else {
