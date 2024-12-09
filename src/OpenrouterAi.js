@@ -88,9 +88,6 @@ export default class OpenRouterAiClient {
             opts.headers = { ...opts.headers, ...this.options.headers };
         }
 
-        console.log(`Current options: ${JSON.stringify(this.modelOptions)}`);
-        console.log(`opts: ${JSON.stringify(opts)}`);
-
         if (modelOptions.stream) {
             // eslint-disable-next-line no-async-promise-executor
             return new Promise(async (resolve, reject) => {
@@ -261,6 +258,8 @@ export default class OpenRouterAiClient {
             reply.lastIndexOf('.'),
             reply.lastIndexOf('!'),
             reply.lastIndexOf('?'),
+            reply.lastIndexOf('}'),
+            reply.lastIndexOf(']'),
         );
         const trimmedReply = lastSentenceEnd !== -1 ? reply.slice(0, lastSentenceEnd + 1) : reply;
 
